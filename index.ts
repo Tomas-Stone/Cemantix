@@ -10,15 +10,32 @@ function handlePreFlightRequest(): Response {
 
 async function handler(_req: Request): Promise<Response> {
   if (_req.method == "OPTIONS") {
-    handlePreFlightRequest();
+    return handlePreFlightRequest();  // Add return here!
+  }
+
+  // Extract the word from the URL query parameters
+  const url = new URL(_req.url);
+  const userWord = url.searchParams.get("word");
+
+  if (!userWord) {
+    return new Response(JSON.stringify({ error: "Missing word parameter" }), {
+      status: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 
   const headers = new Headers();
   headers.append("Content-Type", "application/json");
 
+  // Choose your secret word here!
+  const SECRET_WORD = "extincteur";
+
   const similarityRequestBody = JSON.stringify({
-    word1: "centrale",
-    word2: "supelec",
+    word1: userWord,        // User's guess
+    word2: SECRET_WORD,     // Your secret word
   });
 
   const requestOptions = {
@@ -33,8 +50,8 @@ async function handler(_req: Request): Promise<Response> {
 
     if (!response.ok) {
       console.error(`Error: ${response.statusText}`);
-      return new Response(`Error: ${response.statusText}`, {
-        status: 200,
+      return new Response(JSON.stringify({ error: response.statusText }), {
+        status: 500,
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
@@ -46,7 +63,13 @@ async function handler(_req: Request): Promise<Response> {
     const result = await response.json();
 
     console.log(result);
-    return new Response(JSON.stringify(result), {
+    
+    // Convert the similarity result (0-1) to percentage (0-100)
+    const percentageResult = {
+      value: result.result * 100
+    };
+
+    return new Response(JSON.stringify(percentageResult), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -56,7 +79,13 @@ async function handler(_req: Request): Promise<Response> {
     });
   } catch (error) {
     console.error("Fetch error:", error);
-    return new Response(`Error: ${error.message}`, { status: 500 });
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 }
 
